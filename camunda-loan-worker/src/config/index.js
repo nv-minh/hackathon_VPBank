@@ -7,7 +7,7 @@ const config = {
         baseUrl: process.env.CAMUNDA_BASE_URL || "http://localhost:8080/engine-rest",
         use: logger,
         asyncResponseTimeout: 10000,
-        processKey: process.env.CAMUNDA_PROCESS_KEY || "Process_1f255lo", // Thêm process key để dễ thay đổi
+        processKey: process.env.CAMUNDA_PROCESS_KEY || "Process_1f255lo",
     },
 
 

@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  api-server:
+    build: ./camunda-loan-api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./camunda-loan-api/src:/usr/src/app/src
+    env_file:
+      - ./camunda-loan-api/.env
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  camunda-worker:
+    build: ./camunda-loan-worker
+    volumes:
+      - ./camunda-loan-worker/src:/usr/src/app/src
+      - ./camunda-loan-worker/index.js:/usr/src/app/index.js
+    env_file:
+      - ./camunda-loan-worker/.env
+    depends_on:
+      - postgres
+      - redis
+      - camunda-platform
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_password}
+      POSTGRES_DB: ${DB_DATABASE:-camunda_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  camunda-platform:
+    image: camunda/camunda-platform:8.5.5
+    ports:
+      - "8080:8080" # Operate
+      - "8082:8082" # Tasklist
+      - "8083:8083" # Optimize
+      - "1080:1080" # Mail server (MailHog)
+
+volumes:
+  postgres-data:
+  redis-data:
