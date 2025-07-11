@@ -1,5 +1,5 @@
 const { Pool } = require("pg");
-const postgresConfig = require("../config/postgres.config");
+const postgresConfig = require("../config").db;
 
 console.log("🐘 Khởi tạo kết nối đến PostgreSQL...");
 

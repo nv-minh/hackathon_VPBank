@@ -1,5 +1,5 @@
 const { Client } = require("camunda-external-task-client-js");
-const camundaConfig = require("./src/config/camunda.config");
+const camundaConfig = require("./src/config").camunda;
 const { SESClient } = require("@aws-sdk/client-ses");
 
 const registerGetCustomerDataWorker = require("./src/workers/getCustomerData.worker");
