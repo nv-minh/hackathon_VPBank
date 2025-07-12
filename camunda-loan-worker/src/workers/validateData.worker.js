@@ -8,7 +8,7 @@ function registerValidateDataWorker(client) {
         const isValid = true;
 
         if (isValid) {
-            console.log(`✅ Dữ liệu của khách hàng ${customerData.customer_name} hợp lệ.`);
+            console.log(`✅ Dữ liệu của khách hàng ${customerData} hợp lệ.`);
             await taskService.complete(task);
         } else {
             console.error("❌ Dữ liệu không hợp lệ.");

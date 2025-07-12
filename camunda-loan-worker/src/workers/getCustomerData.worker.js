@@ -1,38 +1,10 @@
-// function registerGetCustomerDataWorker(client) {
-//     client.subscribe("getCustomerData", async ({ task, taskService }) => {
-//         console.log(`⚡️ Nhận được tác vụ [getCustomerData]...`);
-//
-//         const fakeCustomerData = {
-//             application_id: task.variables.get("applicationId") || 'app-fake-01',
-//             customer_name: 'Nguyen Van Test',
-//             credit_score: 750,
-//             annual_salary: 90000000
-//         };
-//         console.log("✅ [TEST] Đã tạo dữ liệu khách hàng giả:", fakeCustomerData);
-//
-//         const processVariables = new Map();
-//         processVariables.set("customerData", fakeCustomerData);
-//
-//         await taskService.complete(task, processVariables);
-//     });
-// }
-//
-// module.exports = registerGetCustomerDataWorker;
-
-
-
-const { Pool } = require('pg');
-const { createClient } = require('redis');
-const config = require('../config');
-
-const pool = new Pool(config.db);
-const redisClient = createClient(config.redis);
-(async () => {
-    await redisClient.connect();
-})();
-
-
-function registerGetCustomerDataWorker(client) {
+/**
+ * Đăng ký worker để lấy dữ liệu khách hàng
+ * @param {object} client - Camunda External Task Client
+ * @param {object} pool - Pool kết nối PostgreSQL đã được khởi tạo
+ * @param {object} redisClient - Client Redis đã được khởi tạo và kết nối
+ */
+function registerGetCustomerDataWorker(client, pool, redisClient) {
     client.subscribe("getCustomerData", async ({ task, taskService }) => {
         console.log(`⚡️ Nhận được tác vụ [getCustomerData]...`);
         const applicationId = task.variables.get("applicationId");
@@ -44,7 +16,6 @@ function registerGetCustomerDataWorker(client) {
         const cacheKey = `customer:${applicationId}`;
 
         try {
-            // 1. Kiểm tra cache
             const cachedData = await redisClient.get(cacheKey);
             if (cachedData) {
                 console.log("CACHE HIT! Lấy dữ liệu từ Redis.");
@@ -57,15 +28,52 @@ function registerGetCustomerDataWorker(client) {
             }
 
             console.log("CACHE MISS! Truy vấn từ PostgreSQL.");
-            const query = 'SELECT * FROM loan_applications WHERE id = $1'; // Ví dụ query
+            const query = `
+    SELECT
+    la.application_id,
+    la.camunda_process_instance_id,
+    la.loan_amount,
+    la.loan_intent,
+    la.loan_grade,
+    la.interest_rate,
+    la.loan_term,
+    la.percent_income,
+    la.status,
+    la.llm_analysis_result,
+    la.created_at AS application_created_at,
+    la.updated_at,
+
+    c.customer_id,
+    c.full_name,
+    c.email,
+    c.keycloak_user_id,
+
+    p.profile_id,
+    p.age,
+    p.income,
+    p.home_ownership,
+    p.employment_length_years,
+    p.default_on_file,
+    p.credit_history_length_years,
+    p.created_at AS profile_created_at
+FROM
+    loan_applications la
+JOIN
+    customers c ON la.customer_id = c.customer_id
+JOIN
+    application_profiles p ON la.profile_id = p.profile_id
+WHERE
+    la.application_id = $${applicationId}; 
+`;
             const { rows } = await pool.query(query, [applicationId]);
 
             if (rows.length === 0) {
-                return await taskService.handleBpmnError(task, "CUSTOMER_NOT_FOUND", `Không tìm thấy đơn vay với id = ${applicationId}`);
+                return await taskService.handleBpmnError(task, "DATA_NOT_FOUND", `Không tìm thấy dữ liệu cho đơn vay id = ${applicationId}`);
             }
 
             const customerData = rows[0];
 
+            // 3. Lưu kết quả vào cache (hết hạn sau 1 giờ)
             await redisClient.set(cacheKey, JSON.stringify(customerData), { EX: 3600 });
             console.log("Đã lưu kết quả vào Redis.");
 

@@ -16,12 +16,16 @@ const config = {
         host: process.env.DB_HOST || "localhost",
         database: process.env.DB_DATABASE || "camunda_db",
         password: process.env.DB_PASSWORD || "your_password",
-        port: parseInt(process.env.DB_PORT || '5432', 10), // Luôn parse port thành số
+        port: parseInt(process.env.DB_PORT || '5432', 10),
     },
 
 
     redis: {
         url: process.env.REDIS_URL || 'redis://localhost:6379'
+    },
+
+    aws:{
+        ses:''
     },
 
 

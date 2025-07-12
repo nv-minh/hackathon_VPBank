@@ -1,69 +1,48 @@
-const { SendEmailCommand } = require("@aws-sdk/client-ses");
-const config = require('../config');
+const { sendEmail } = require('../services/email.service');
 
-function registerEmailNotificationWorker(client, sesClient) {
-    client.subscribe("emailNotification", async ({ task, taskService }) => {
-        const type = task.variables.get("type");
-        console.log(`✉️ Nhận được tác vụ [emailNotification] loại: ${type}`);
+function registerEmailNotificationWorker(client) {
+    client.subscribe("sendEmailNotification", async ({ task, taskService }) => {
+        console.log(`📧 Nhận được tác vụ [sendEmailNotification]...`);
 
         try {
-            const customerData = task.variables.get("customerData") || {};
-            let toAddress = customerData.email || 'default-customer@example.com';
-            const fromAddress = config.aws.ses.fromAddress;
+            const customerData = task.variables.get("customerData");
+            const loanResults = task.variables.get("loan_results");
 
-            let subject = "";
-            let body = "";
-
-            switch (type) {
-                case "offer":
-                    const product = task.variables.get("recommendedProduct") || {};
-                    subject = "Chúc mừng! Đề nghị vay vốn của bạn đã được phê duyệt";
-                    body = `Chào ${customerData.name || 'quý khách'},\n\nSản phẩm được đề xuất cho bạn là: ${product.name} với lãi suất ${product.interest_rate}.`;
-                    break;
-
-                case "rejection":
-                    subject = "Thông báo về đơn yêu cầu vay vốn của bạn";
-                    body = `Chào ${customerData.name || 'quý khách'},\n\nChúng tôi rất tiếc phải thông báo rằng đơn yêu cầu vay vốn của bạn chưa được phê duyệt lúc này.`;
-                    break;
-
-                case "confirmation":
-                    subject = "Xác nhận khoản vay thành công";
-                    body = `Chào ${customerData.name || 'quý khách'},\n\nKhoản vay của bạn đã được giải ngân thành công.`;
-                    break;
-
-                case "reminder":
-                    subject = "Nhắc nhở: Vui lòng phản hồi đề nghị vay vốn";
-                    body = `Chào ${customerData.name || 'quý khách'},\n\nChúng tôi thấy bạn chưa phản hồi về đề nghị vay vốn đã gửi trước đó.`;
-                    break;
-
-                case "managerInsights":
-                    const insights = task.variables.get("insights") || "Không có phân tích chi tiết.";
-                    toAddress = config.managerEmail; // Lấy email quản lý từ config
-                    subject = `[Cần xem xét] Đơn vay của khách hàng ${customerData.name || 'chưa rõ'}`;
-                    body = `Một đơn vay cần được xem xét thủ công.\n\nPhân tích từ LLM:\n"${insights}"`;
-                    break;
-
-                default:
-                    console.warn(`Loại email không xác định: ${type}`);
-                    return taskService.complete(task);
+            if (!customerData || !loanResults) {
+                throw new Error("Thiếu thông tin khách hàng hoặc kết quả khoản vay.");
             }
 
-            const command = new SendEmailCommand({
-                Source: fromAddress,
-                Destination: { ToAddresses: [toAddress] },
-                Message: {
-                    Subject: { Data: subject },
-                    Body: { Text: { Data: body } },
-                },
-            });
+            const recipientEmail = customerData.email;
+            let subject = '';
+            let body = '';
 
-            await sesClient.send(command);
-            console.log(`✅ Gửi email loại '${type}' đến ${toAddress} thành công.`);
+            if (loanResults.decision === 'Approved') {
+                subject = 'Chúc mừng! Đơn vay của bạn đã được phê duyệt';
+                body = `
+                    Chào ${customerData.full_name},<br><br>
+                    Chúng tôi vui mừng thông báo đơn vay của bạn đã được phê duyệt với số tiền là ${loanResults.approved_amount}.<br><br>
+                    Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi.
+                `;
+            } else {
+                subject = 'Thông báo về đơn vay của bạn';
+                body = `
+                    Chào ${customerData.full_name},<br><br>
+                    Sau khi xem xét, chúng tôi rất tiếc phải thông báo rằng đơn vay của bạn chưa được phê duyệt lần này.<br><br>
+                    Lý do: ${loanResults.reason}.
+                `;
+            }
+
+            await sendEmail(recipientEmail, subject, body);
+
+            console.log(`👍 Hoàn thành tác vụ gửi email đến ${recipientEmail}.`);
             await taskService.complete(task);
 
         } catch (error) {
-            console.error(`❌ Lỗi khi gửi email loại '${type}':`, error);
-            await taskService.handleFailure(task, { errorMessage: error.message });
+            console.error(`❌ Lỗi trong worker gửi email:`, error.message);
+            await taskService.handleFailure(task, {
+                errorMessage: "Không thể gửi email thông báo.",
+                errorDetails: error.stack,
+            });
         }
     });
 }

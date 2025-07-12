@@ -1,35 +1,51 @@
-client.subscribe("recommendProduct", async ({ task, taskService }) => {
-    console.log(`💡 Nhận được tác vụ [recommendProduct] để gọi AI...`);
+const axios = require('axios');
+const { Variables } = require("camunda-external-task-client-js");
 
-    const customerData = task.variables.get("customerData");
+function registerRecommendProductWorker(client, redisClient) {
+    client.subscribe("recommendProduct", async ({ task, taskService }) => {
+        console.log(`💡 Nhận được tác vụ [recommendProduct]...`);
 
-    if (!customerData) {
-        console.error("Lỗi: Không tìm thấy 'customerData' để gửi cho AI gợi ý sản phẩm.");
-        return await taskService.handleFailure(task, {
-            errorMessage: "Thiếu customerData để gợi ý sản phẩm."
-        });
-    }
+        try {
+            const customerData = task.variables.get("customerData");
+            if (!customerData) {
+                throw new Error("Không tìm thấy 'customerData' để gợi ý sản phẩm.");
+            }
 
-    try {
-        const recommendServiceUrl = 'http://your-ai-service.com/recommend-product';
+            const cacheKey = `recommendation:${customerData.application_id}`;
+            console.log(`...kiểm tra cache với key: ${cacheKey}`);
 
-        console.log(`...gửi yêu cầu đến service gợi ý sản phẩm: ${recommendServiceUrl}`);
+            const cachedRecommendation = await redisClient.get(cacheKey);
 
-        const response = await axios.post(recommendServiceUrl, customerData);
-        const recommendedProduct = response.data;
+            if (cachedRecommendation) {
+                console.log("✅ Cache HIT. Sử dụng gợi ý sản phẩm từ Redis.");
+                const recommendedProduct = JSON.parse(cachedRecommendation);
 
-        console.log("✅ AI đã gợi ý sản phẩm:", recommendedProduct);
+                const processVariables = new Variables();
+                processVariables.set("recommendedProduct", recommendedProduct);
+                return await taskService.complete(task, processVariables);
+            }
 
-        const processVariables = new Map();
-        processVariables.set("recommendedProduct", recommendedProduct);
+            console.log("... Cache MISS. Gọi đến service gợi ý sản phẩm.");
+            const recommendServiceUrl = 'http://your-ai-service.com/recommend-product';
+            const response = await axios.post(recommendServiceUrl, customerData);
+            const recommendedProduct = response.data;
 
-        await taskService.complete(task, processVariables);
+            await redisClient.set(cacheKey, JSON.stringify(recommendedProduct), { EX: 3600 });
+            console.log(`...đã lưu gợi ý vào cache.`);
 
-    } catch (error) {
-        console.error("❌ Lỗi khi gọi service AI gợi ý sản phẩm:", error.message);
-        await taskService.handleFailure(task, {
-            errorMessage: "Không thể kết nối hoặc có lỗi từ service AI gợi ý sản phẩm.",
-            errorDetails: error.stack
-        });
-    }
-});
+            console.log("✅ AI đã gợi ý sản phẩm:", recommendedProduct);
+            const processVariables = new Variables();
+            processVariables.set("recommendedProduct", recommendedProduct);
+            await taskService.complete(task, processVariables);
+
+        } catch (error) {
+            console.error("❌ Lỗi trong worker [recommendProduct]:", error.message);
+            await taskService.handleFailure(task, {
+                errorMessage: error.message,
+                errorDetails: error.stack
+            });
+        }
+    });
+}
+
+module.exports = registerRecommendProductWorker;

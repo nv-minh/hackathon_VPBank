@@ -49,6 +49,7 @@ CREATE TABLE loan_applications (
                                    loan_intent VARCHAR(50),
                                    loan_grade CHAR(1),
                                    interest_rate NUMERIC(5, 2),
+                                   loan_term FLOAT,
                                    percent_income NUMERIC(3, 2),
                                    status application_status DEFAULT 'PENDING',
                                    llm_analysis_result TEXT,
@@ -61,7 +62,7 @@ CREATE TABLE recommendations (
                                  recommendation_id BIGSERIAL PRIMARY KEY,
                                  application_id BIGINT NOT NULL REFERENCES loan_applications(application_id),
                                  product_id INT NOT NULL REFERENCES products(product_id),
-                                 score FLOAT, -- Điểm số hoặc độ tin cậy của gợi ý
+                                 score FLOAT,
                                  recommended_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
