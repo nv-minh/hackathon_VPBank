@@ -19,7 +19,11 @@ Hệ thống tích hợp **Trí tuệ Nhân tạo (AI)** để đưa ra quyết 
 
 ---
 
-## 🏗️ Sơ đồ Kiến trúc Hệ thống
+## 🏗️ Sơ đồ quy trình hệ thống Camunda
+
+<img width="1344" height="473" alt="image" src="https://github.com/user-attachments/assets/9c80f26f-472e-4597-ab2c-80b3ae86e78f" />
+
+### 🏗️ Sơ đồ Kiến trúc Hệ thống
 
 ```
 graph TD
