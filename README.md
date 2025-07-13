@@ -25,45 +25,16 @@ Hệ thống tích hợp **Trí tuệ Nhân tạo (AI)** để đưa ra quyết 
 
 ### 🏗️ Sơ đồ Kiến trúc Hệ thống
 
-```
-graph TD
-    subgraph "Người dùng"
-        A[Frontend - Next.js]
-    end
+<img width="622" height="447" alt="image" src="https://github.com/user-attachments/assets/40c162d6-f337-4893-91b3-80fa97a587fc" />
 
-    subgraph "Hạ tầng Xác thực"
-        B[Keycloak Server]
-    end
+#### 🏗️ Ensemble-Based Loan Approval Prediction Pipeline
 
-    subgraph "Hạ tầng Backend"
-        C[API Server - Express.js]
-        D[Camunda Worker - Node.js]
-        E[Camunda 7 Engine]
-        F[PostgreSQL Database]
-        G[Redis Cache]
-    end
+<img width="677" height="176" alt="image" src="https://github.com/user-attachments/assets/28848c41-cebb-44d7-8960-78a0663271ba" />
 
-    subgraph "Dịch vụ Ngoài"
-        H[Service AI Chấm điểm]
-        I[Service LLM Phân tích]
-        J[AWS SES - Gửi Email]
-    end
+##### 🏗️ Hybrid Rating Calculation Using Content and Collaborative Filtering
 
-    A -- "1. Đăng nhập/Đăng ký" --> B
-    B -- "2. Trả về Token" --> A
-    A -- "3. Gửi đơn vay (với Token)" --> C
-    C -- "4. Xác thực Token" --> B
-    C -- "5. Lưu dữ liệu" --> F
-    C -- "6. Khởi tạo Quy trình" --> E
+<img width="727" height="255" alt="image" src="https://github.com/user-attachments/assets/2e299937-c045-419f-a418-0f4caf3ca8d0" />
 
-    D -- "7. Lấy việc (Polling)" --> E
-    E -- "8. Giao việc" --> D
-    D -- "9. Lấy dữ liệu" --> F
-    D -- "10. Kiểm tra Cache" --> G
-    D -- "11. Gọi AI/LLM" --> H & I
-    D -- "12. Gửi Email" --> J
-    D -- "13. Hoàn thành việc" --> E
-```
 
 ---
 
