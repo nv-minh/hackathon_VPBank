@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 const applicationsRouter = require('./src/api/routes/applications.router');
+const userRouter = require('./src/api/routes/user.router');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.get('/health', (req, res) => {
 // Bất kỳ request nào đến /api/applications mà không có Access Token hợp lệ
 // sẽ tự động bị từ chối với lỗi 401 Unauthorized.
 app.use('/api/applications', applicationsRouter);
+app.use('/api/user', userRouter);
 // app.use('/api/applications', keycloak.protect(), applicationsRouter);
 
 

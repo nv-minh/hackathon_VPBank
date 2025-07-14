@@ -9,28 +9,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    let requestBody: { loanAmount?: number } = {};
-
+    let profileData = {};
     try {
-        if (req.headers.get("content-length") !== "0") {
-            requestBody = await req.json();
-        }
+        profileData = await req.json();
     } catch (e) {
-        console.warn("Could not parse request body. Proceeding with empty body.", e);
-        requestBody = {};
+        console.error("Error parsing request body for profile creation:", e);
+        return NextResponse.json({ message: "Invalid request body" }, { status: 400 });
     }
 
-    const { loanAmount } = requestBody;
 
-
-    const payloadToBackend = {
-        loanAmount: loanAmount,
+    const finalProfilePayload = {
+        ...profileData,
     };
+
 
     try {
         const response = await axios.post(
-            'http://localhost:3002/api/applications',
-            payloadToBackend,
+            'http://localhost:3002/api/profiles',
+            finalProfilePayload,
             {
                 headers: {
                     'Authorization': `Bearer ${token.accessToken}`,
@@ -42,7 +38,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(response.data, { status: response.status });
 
     } catch (error: any) {
-        console.error("Proxy API error:", error.response?.data || error.message);
+        console.error("Proxy API /api/create-profile error:", error.response?.data || error.message);
         return NextResponse.json(
             { message: error.response?.data?.message || 'Internal Server Error' },
             { status: error.response?.status || 500 }

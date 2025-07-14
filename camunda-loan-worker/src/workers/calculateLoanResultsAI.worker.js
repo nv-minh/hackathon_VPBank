@@ -43,7 +43,7 @@ function registerCalculateLoanResultsAIWorker(client, redisClient) {
                     person_emp_length: customerData.employment_length_years,
                     loan_intent: customerData.loan_intent,
                     loan_grade: customerData.loan_grade,
-                    loan_amnt: customerData.loan_amount,
+                    loan_amnt: customerData.loan_amount /26,
                     loan_int_rate: customerData.interest_rate,
                     loan_percent_income: customerData.percent_income,
                     cb_person_default_on_file: customerData.default_on_file,

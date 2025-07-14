@@ -1,9 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Bot, User, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+// @ts-ignore
+import readVNNumber from '@oorts/read-vn-number';
 
 interface Message {
   id: string
@@ -21,32 +25,78 @@ export function ChatBot({ onClose }: ChatBotProps) {
     {
       id: "1",
       type: "bot",
-      content: "Xin chào! Tôi là trợ lý ảo của ngân hàng. Bạn có muốn đăng ký một khoản vay mới không?",
+      content: "Xin chào! Tôi là trợ lý ảo của ngân hàng. Bạn có muốn đăng ký một khoản vay mới không? Nếu có hãy nhập giá trị mà bạn muốn vay.",
       timestamp: new Date(),
     },
   ])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [loanAmount, setLoanAmount] = useState<string>("")
+  const [showLoanInput, setShowLoanInput] = useState(true)
+  const [inputError, setInputError] = useState<string | null>(null)
+  const [loanAmountInWords, setLoanAmountInWords] = useState<string>("");
+
+  useEffect(() => {
+    const numericValue = parseFloat(loanAmount.replace(/\./g, ''));
+    if (!isNaN(numericValue) && numericValue > 0) {
+      try {
+        const words = readVNNumber.toVNWord(numericValue);
+        setLoanAmountInWords(words);
+      } catch (error) {
+        setLoanAmountInWords("");
+      }
+    } else {
+      setLoanAmountInWords("");
+    }
+  }, [loanAmount]);
 
   const handleLoanRegistration = async (wantsLoan: boolean) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: "user",
-      content: wantsLoan ? "Có, tôi muốn bắt đầu" : "Không, cảm ơn",
-      timestamp: new Date(),
+    if (!wantsLoan) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: "user",
+        content: "Không, cảm ơn",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, userMessage])
+      setIsProcessing(true)
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "bot",
+        content:
+            "Cảm ơn bạn! Nếu có nhu cầu vay vốn trong tương lai, đừng ngần ngại liên hệ với chúng tôi. Chúc bạn một ngày tốt lành!",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, botResponse])
+      setIsProcessing(false)
+      setShowLoanInput(false)
+      return
     }
 
-    setMessages((prev) => [...prev, userMessage])
-    setIsProcessing(true)
+    if (wantsLoan && loanAmount) {
+      const amount = parseFloat(loanAmount.replace(/\./g, ''));
+      if (isNaN(amount) || amount <= 0) {
+        setInputError("Vui lòng nhập số tiền hợp lệ lớn hơn 0.");
+        return;
+      }
 
-    if (wantsLoan) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: "user",
+        content: `Có, tôi muốn vay ${loanAmount} VNĐ`,
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, userMessage])
+      setIsProcessing(true)
+      setInputError(null);
+
       try {
         const response = await fetch("/api/submit-application", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          // Khi không có body, backend sẽ tự động chạy luồng test
-          // body: undefined (hoặc không cần khai báo)
+          body: JSON.stringify({ loanAmount: amount }),
         })
 
         const data = await response.json()
@@ -69,20 +119,30 @@ export function ChatBot({ onClose }: ChatBotProps) {
           timestamp: new Date(),
         }
         setMessages((prev) => [...prev, errorMessage])
+      } finally {
+        setIsProcessing(false)
+        setShowLoanInput(false)
       }
-    } else {
-      const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "bot",
-        content:
-            "Cảm ơn bạn! Nếu có nhu cầu vay vốn trong tương lai, đừng ngần ngại liên hệ với chúng tôi. Chúc bạn một ngày tốt lành!",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, botResponse])
+    } else if (wantsLoan && !loanAmount) {
+      setInputError("Vui lòng nhập số tiền bạn muốn vay.");
     }
-
-    setIsProcessing(false)
   }
+
+  const formatCurrency = (value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    if (!numericValue) return "";
+
+    const formatted = new Intl.NumberFormat('vi-VN').format(Number(numericValue));
+    return formatted;
+  };
+
+  const handleLoanAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLoanAmount(formatCurrency(value));
+    if (inputError) {
+      setInputError(null);
+    }
+  };
 
   return (
       <div className="space-y-4">
@@ -126,18 +186,44 @@ export function ChatBot({ onClose }: ChatBotProps) {
           ))}
         </div>
 
-        {messages.length === 1 && !isProcessing && (
-            <div className="flex space-x-2">
-              <Button
-                  onClick={() => handleLoanRegistration(true)}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                  size="sm"
-              >
-                Có
-              </Button>
-              <Button onClick={() => handleLoanRegistration(false)} variant="outline" className="flex-1" size="sm">
-                Không
-              </Button>
+        {showLoanInput && !isProcessing && (
+            <div className="space-y-3">
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="loanAmount" className="text-base font-semibold text-gray-800">
+                  Nhập số VNĐ bạn muốn vay
+                </Label>
+                <Input
+                    type="text"
+                    id="loanAmount"
+                    placeholder="Ví dụ: 100.000.000"
+                    value={loanAmount}
+                    onChange={handleLoanAmountChange}
+                    className={inputError ? "border-red-500" : ""}
+                />
+                {inputError && <p className="text-red-500 text-xs">{inputError}</p>}
+                {loanAmountInWords && !inputError && (
+                    <p className="text-gray-600 text-xs mt-1">{loanAmountInWords}</p>
+                )}
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                    onClick={() => handleLoanRegistration(true)}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    size="sm"
+                    disabled={isProcessing}
+                >
+                  Có
+                </Button>
+                <Button
+                    onClick={() => handleLoanRegistration(false)}
+                    variant="outline"
+                    className="flex-1"
+                    size="sm"
+                    disabled={isProcessing}
+                >
+                  Không
+                </Button>
+              </div>
             </div>
         )}
 
@@ -152,4 +238,3 @@ export function ChatBot({ onClose }: ChatBotProps) {
       </div>
   )
 }
-
