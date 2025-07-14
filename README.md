@@ -13,9 +13,9 @@ Hệ thống tích hợp **Trí tuệ Nhân tạo (AI)** để đưa ra quyết 
 - **Phân tích Chú giải bằng LLM**: Đối với các case "Review", hệ thống dùng LLM để phân tích hỗ trợ thẩm định viên.
 - **Xác thực và Phân quyền Mạnh mẽ**: Keycloak + NextAuth.js bảo vệ định danh và truy cập API.
 - **Tối ưu Hiệu năng**: Redis cache giúp giảm tải CSDL và các service AI.
-- **Trải nghiệm Người dùng Real-time**: (Tùy chọn) WebSocket cập nhật trạng thái hồ sơ.
+- **Trải nghiệm Người dùng Real-time**: WebSocket cập nhật trạng thái hồ sơ.
 - **Kiến trúc Microservices**: Phân tách thành các service: API Server, Worker, Frontend (Next.js), đóng gói bằng Docker.
-- **CI/CD Hoàn chỉnh**: Dùng GitHub Actions tự động build và deploy lên Amazon ECS.
+- **CI/CD**: Dùng GitHub Actions tự động build và deploy lên Amazon ECS.
 
 ---
 
@@ -24,8 +24,7 @@ Hệ thống tích hợp **Trí tuệ Nhân tạo (AI)** để đưa ra quyết 
 <img width="1344" height="473" alt="image" src="https://github.com/user-attachments/assets/9c80f26f-472e-4597-ab2c-80b3ae86e78f" />
 
 ### 🏗️ Sơ đồ Kiến trúc Hệ thống
-
-<img width="622" height="447" alt="image" src="https://github.com/user-attachments/assets/40c162d6-f337-4893-91b3-80fa97a587fc" />
+<img width="843" height="635" alt="image" src="https://github.com/user-attachments/assets/c28f8427-a40e-4844-9345-e5cf75fec195" />
 
 #### 🏗️ Ensemble-Based Loan Approval Prediction Pipeline
 
@@ -45,7 +44,6 @@ Hệ thống tích hợp **Trí tuệ Nhân tạo (AI)** để đưa ra quyết 
 - TypeScript
 - NextAuth.js (Tích hợp Keycloak)
 - Tailwind CSS, Shadcn UI
-- Axios
 
 ### Backend - API Server:
 - Node.js, Express.js
@@ -129,8 +127,7 @@ curl -w "
 /
 ├── camunda-loan-api          # API Server (Express.js)
 ├── camunda-loan-worker       # Camunda External Task Worker
-├── frontend-nextjs           # Ứng dụng người dùng (Next.js)
-├── resources                 # File .bpmn và assets tĩnh
+├── loan-process-fe           # Ứng dụng người dùng (Next.js)
 ├── docker-compose.yml        # Định nghĩa dịch vụ toàn hệ thống
 ```
 
