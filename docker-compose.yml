@@ -1,10 +1,22 @@
 version: '3.8'
 
 services:
+  frontend:
+    build: ./loan-process-fe
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    volumes:
+      - ./loan-process-fe:/usr/src/app
+    env_file:
+      - ./loan-process-fe/.env
+    depends_on:
+      - keycloak
+    restart: unless-stopped
+
   api-server:
     build: ./camunda-loan-api
     ports:
-      - "3000:3000"
+      - "${API_PORT}:3002"
     volumes:
       - ./camunda-loan-api/src:/usr/src/app/src
     env_file:
@@ -20,26 +32,53 @@ services:
       - ./camunda-loan-worker/index.js:/usr/src/app/index.js
     env_file:
       - ./camunda-loan-worker/.env
+    ports:
+      - "${WORKER_PORT}:3001"
     depends_on:
       - postgres
       - redis
-      - camunda-platform
+      - camunda
+    restart: unless-stopped
+
+  camunda:
+    image: camunda/camunda-bpm-platform:run-7.20.0
+    ports:
+      - "${CAMUNDA_PORT}:8080"
+    environment:
+      - DB_DRIVER=${CAMUNDA_DB_DRIVER}
+      - DB_URL=${CAMUNDA_DB_URL}
+      - DB_USERNAME=${CAMUNDA_DB_USERNAME}
+      - DB_PASSWORD=${CAMUNDA_DB_PASSWORD}
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+    environment:
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis-data:/data
 
-  camunda-platform:
-    image: camunda/camunda-platform:8.5.5
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "8080:8080" # Operate
-      - "8082:8082" # Tasklist
-      - "8083:8083" # Optimize
-      - "1080:1080" # Mail server (MailHog)
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
 
 volumes:
   redis-data:
+  postgres-data:
