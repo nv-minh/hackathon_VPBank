@@ -9,7 +9,7 @@ async function createApplication(req, res) {
         // const email = tokenContent.email;
         const keycloakId = '5ede2850-11cb-44b6-b394-67ea2d711bbe'
         const requestBody = req.body;
-        const hasNewData = requestBody && Object.keys(requestBody).length > 0;
+        const hasNewData = requestBody && Object.keys(requestBody).length > 1;
 
         let applicationData;
 
@@ -20,7 +20,8 @@ async function createApplication(req, res) {
         } else {
             // **KỊCH BẢN 2: Không có dữ liệu, chạy luồng Test**
             console.log("DEBUG - Không có dữ liệu, chạy luồng test bằng dữ liệu cũ.");
-            const latestApplication = await dbService.findCustomerWithLatestProfile(keycloakId);
+            console.log("requestBody",requestBody)
+            const latestApplication = await dbService.findAndOptionalUpdateProfile(keycloakId,requestBody?.loanAmount/26);
 
             if (!latestApplication) {
                 return res.status(404).json({ message: "Không tìm thấy đơn vay cũ để thực hiện test." });

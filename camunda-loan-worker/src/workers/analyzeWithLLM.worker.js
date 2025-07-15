@@ -11,15 +11,12 @@ function registerAnalyzeLLMWorker(client, redisClient) {
                 throw new Error("Không tìm thấy 'customerData' để gửi cho LLM.");
             }
 
-            // 1. Tạo cache key
             const cacheKey = `llm_analysis:${customerData.application_id}`;
             console.log(`...kiểm tra cache với key: ${cacheKey}`);
 
-            // 2. Kiểm tra cache
             const cachedAnalysis = await redisClient.get(cacheKey);
 
             if (cachedAnalysis) {
-                // Cache HIT
                 console.log("✅ Cache HIT. Sử dụng kết quả phân tích từ Redis.");
                 const insights = JSON.parse(cachedAnalysis);
 
@@ -28,18 +25,17 @@ function registerAnalyzeLLMWorker(client, redisClient) {
                 return await taskService.complete(task, processVariables);
             }
 
-            // 3. Cache MISS
             console.log("... Cache MISS. Gọi đến service LLM.");
-            const bedrockServiceUrl = 'https://your-aws-bedrock-service.com/analyze-reason';
-            const response = await axios.post(bedrockServiceUrl, customerData);
-            const analysisResult = response.data;
-            const insights = analysisResult.analysis_text;
+            // const bedrockServiceUrl = 'https://your-aws-bedrock-service.com/analyze-reason';
+            // const response = await axios.post(bedrockServiceUrl, customerData);
+            // const analysisResult = response.data;
+            // const insights = analysisResult.analysis_text;
+            const insights = "cũng được đấy hãy cân nhắc";
 
             if (!insights) {
                 throw new Error("Dữ liệu từ LLM không có nội dung phân tích.");
             }
 
-            // 4. Lưu vào cache
             await redisClient.set(cacheKey, JSON.stringify(insights), { EX: 3600 });
             console.log(`...đã lưu phân tích vào cache.`);
 

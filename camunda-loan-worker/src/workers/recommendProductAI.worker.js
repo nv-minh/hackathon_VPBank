@@ -26,12 +26,12 @@ function registerRecommendProductWorker(client, redisClient) {
             const response = await axios.post(recommendServiceUrl, apiPayload);
             const parsedBody = JSON.parse(response.data.body);
             const recommendedProduct = parsedBody.prediction.result;
-
+            console.log("recommendedProduct",recommendedProduct)
             if (recommendedProduct && recommendedProduct.product_id) {
                 await saveRecommendation(customerData.application_id, recommendedProduct);
             }
 
-            console.log("✅ AI đã gợi ý sản phẩm:", recommendedProduct);
+            console.log("✅ AI đã gợi ý sản phẩm:", recommendedProduct?.product);
             const processVariables = new Variables();
             processVariables.set("recommendedProduct", recommendedProduct);
             processVariables.set("customerData", customerData);

@@ -3,69 +3,86 @@ const config = require('../../config');
 
 const pool = new Pool(config.db);
 
-async function findOrCreateCustomer(keycloakId, email, name) {
+async function findOrCreateCustomer(keycloakId) {
     const query = `
-        INSERT INTO customers (keycloak_user_id, email, full_name)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (keycloak_user_id) DO UPDATE SET
-            email = EXCLUDED.email,
-            full_name = EXCLUDED.full_name
-        RETURNING customer_id;
+        SELECT customer_id FROM customers WHERE keycloak_user_id = $1
     `;
-    const { rows } = await pool.query(query, [keycloakId, email, name]);
+    const { rows } = await pool.query(query, [keycloakId]);
     return rows[0].customer_id;
 }
 
 
-/**
- * Tìm khách hàng bằng keycloakId và lấy thông tin chi tiết từ đơn vay gần nhất của họ.
- * @param {string} keycloakId - ID của người dùng từ Keycloak.
- * @returns {Promise<object|null>} Trả về một đối tượng chứa toàn bộ thông tin, hoặc null nếu không tìm thấy.
- */
-/**
- * Tìm khách hàng bằng keycloakId và lấy thông tin từ profile tài chính gần nhất của họ.
- * @param {string} keycloakId - ID của người dùng từ Keycloak.
- * @returns {Promise<object|null>} Trả về một đối tượng chứa thông tin customer và profile, hoặc null nếu không tìm thấy.
- */
-async function findCustomerWithLatestProfile(keycloakId) {
-    const query = `
-        SELECT
-            c.customer_id,
-            c.full_name,
-            c.email,
-            
-            p.profile_id,
-            p.age,
-            p.income,
-            p.home_ownership,
-            p.employment_length_years,
-            p.default_on_file,
-            p.credit_history_length_years,
-            p.loan_amount,
-            p.loan_intent,
-            p.loan_grade,
-            p.interest_rate,
-            p.loan_term,
-            p.percent_income,
-            p.created_at AS profile_created_at
 
-        FROM 
-            customers c
-        LEFT JOIN 
-            application_profiles p ON c.customer_id = p.customer_id
-        WHERE 
-            c.keycloak_user_id = $1
-        ORDER BY 
-            p.created_at DESC -- Sắp xếp để lấy profile mới nhất
-        LIMIT 1;
-    `;
+/**
+ * Tìm thông tin khách hàng và hồ sơ mới nhất của họ.
+ * Nếu loanAmount được cung cấp, hàm sẽ cập nhật loan_amount cho hồ sơ đó.
+ * Tất cả các thao tác được thực hiện trong một giao dịch để đảm bảo toàn vẹn dữ liệu.
+ * @param {string} keycloakId - ID người dùng từ Keycloak.
+ * @param {number} [loanAmount] - (Tùy chọn) Số tiền vay mới để cập nhật.
+ * @returns {Promise<object|null>} Trả về object chứa thông tin khách hàng và hồ sơ, hoặc null nếu không tìm thấy.
+ */
+async function findAndOptionalUpdateProfile(keycloakId, loanAmount) {
+    const client = await pool.connect();
 
     try {
-        const { rows } = await pool.query(query, [keycloakId]);
-        return rows[0] || null;
+        await client.query('BEGIN');
+
+        const selectQuery = `
+            SELECT
+                c.customer_id, c.full_name, c.email,
+                p.profile_id, p.age, p.income, p.home_ownership,
+                p.employment_length_years, p.default_on_file,
+                p.credit_history_length_years, p.loan_amount, p.loan_intent,
+                p.loan_grade, p.interest_rate, p.loan_term, p.percent_income,
+                p.created_at AS profile_created_at
+            FROM customers c
+            LEFT JOIN application_profiles p ON c.customer_id = p.customer_id
+            WHERE c.keycloak_user_id = $1
+            ORDER BY p.created_at DESC
+            LIMIT 1;
+        `;
+
+        const { rows } = await client.query(selectQuery, [keycloakId]);
+        const customerProfile = rows[0];
+
+        if (!customerProfile) {
+            await client.query('COMMIT');
+            return null;
+        }
+
+        if (loanAmount && customerProfile.profile_id) {
+            const updateQuery = `
+                UPDATE application_profiles
+                SET 
+                    loan_amount = $1,
+                    percent_income = ($1::numeric / income) 
+                WHERE 
+                    profile_id = $2
+                RETURNING *;
+            `;
+
+
+            const updatedResult = await client.query(updateQuery, [loanAmount, customerProfile.profile_id]);
+            const updatedProfileData = updatedResult.rows[0];
+
+            const finalResult = {
+                ...customerProfile,
+                ...updatedProfileData
+            };
+
+            await client.query('COMMIT');
+            return finalResult;
+        } else {
+            await client.query('COMMIT');
+            return customerProfile;
+        }
+
     } catch (error) {
-        console.error("Lỗi khi tìm khách hàng và profile:", error);
+        await client.query('ROLLBACK');
+        console.error("Lỗi trong quá trình giao dịch:", error);
         throw error;
+    } finally {
+        client.release();
     }
 }
 
@@ -108,6 +125,32 @@ async function findActiveApplicationByCustomerId(customerId) {
 }
 
 /**
+ * Tìm profile_id trong bảng application_profiles dựa vào keycloakId của người dùng.
+ * @param {() => string} keycloakId - ID người dùng từ Keycloak.
+ * @returns {Promise<number|null>} Trả về profile_id nếu tìm thấy, ngược lại trả về null.
+ */
+async function findProfileIdByKeycloakId(keycloakId) {
+    const query = `
+        SELECT ap.profile_id
+        FROM application_profiles AS ap
+        JOIN customers AS c ON ap.customer_id = c.customer_id
+        WHERE c.keycloak_user_id = $1
+        ORDER BY ap.created_at DESC
+        LIMIT 1;
+    `;
+
+    try {
+        const { rows } = await pool.query(query, [keycloakId]);
+        console.log("rows",rows)
+        return rows.length > 0 ? rows?.[0]?.profile_id : null;
+
+    } catch (error) {
+        console.error('Error finding profile by Keycloak ID:', error);
+        throw error;
+    }
+}
+
+/**
  * Tạo một bản ghi loan_application mới để theo dõi trạng thái quy trình.
  * @param {number} customerId - ID của khách hàng.
  * @param {number} profileId - ID của profile tài chính vừa được tạo.
@@ -137,8 +180,9 @@ module.exports = {
     pool,
     findOrCreateCustomer,
     createApplicationProfile,
+    findProfileIdByKeycloakId,
     createLoanApplication,
     updateApplicationWithProcessId,
-    findCustomerWithLatestProfile,
+    findAndOptionalUpdateProfile,
     findActiveApplicationByCustomerId
 };

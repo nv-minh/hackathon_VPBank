@@ -34,7 +34,7 @@ CREATE TABLE application_profiles (
     loan_grade CHAR(1),
     interest_rate NUMERIC(5, 2),
     loan_term FLOAT,
-    percent_income NUMERIC(3, 2),
+    percent_income NUMERIC(5, 2),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

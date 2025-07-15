@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChatBot } from "@/components/dashboard/chatbot"
-import { FormInputProfile } from "@/components/dashboard/FormInputProfile" // Import ComponentA mới
+import { FormInputProfile } from "@/components/dashboard/FormInputProfile"
 import { signOut } from "next-auth/react"
 import { User, LogOut, MessageCircle } from "lucide-react"
 import type { Session } from "next-auth"
@@ -25,7 +25,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
         const response = await fetch('/api/user-info');
         if (response.ok) {
           const data = await response.json();
-          setProfileId(data.profileId);
+          setProfileId(data.hasProfile);
           setHasProfile(true);
         } else if (response.status === 404) {
           setProfileId(null);
@@ -79,7 +79,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
         </header>
 
         <main className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className={`grid grid-cols-1 ${hasProfile ? "lg:grid-cols-3" : ""} gap-8`}>
             <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>

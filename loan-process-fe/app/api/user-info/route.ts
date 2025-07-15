@@ -10,11 +10,13 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const response = await axios.get(
+        const response = await axios.post(
             'http://localhost:3002/api/user',
+            {},
             {
                 headers: {
                     'Authorization': `Bearer ${token.accessToken}`,
+                    'Content-Type': 'application/json'
                 }
             }
         );

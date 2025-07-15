@@ -28,7 +28,6 @@ const keycloakConfig = JSON.parse(fs.readFileSync(keycloakConfigPath, 'utf8'));
 const keycloak = new Keycloak({ store: memoryStore }, keycloakConfig);
 
 
-// --- 3. Áp dụng các Middleware ---
 app.use(cors());
 app.use(express.json());
 
@@ -45,9 +44,9 @@ app.get('/health', (req, res) => {
 // Sử dụng keycloak.protect() để bảo vệ tất cả các route trong applicationsRouter
 // Bất kỳ request nào đến /api/applications mà không có Access Token hợp lệ
 // sẽ tự động bị từ chối với lỗi 401 Unauthorized.
-app.use('/api/applications', applicationsRouter);
-app.use('/api/user', userRouter);
-// app.use('/api/applications', keycloak.protect(), applicationsRouter);
+// app.use('/api/applications', applicationsRouter);
+app.use('/api/user', keycloak.protect(), userRouter);
+app.use('/api/applications', keycloak.protect(), applicationsRouter);
 
 
 module.exports = app;

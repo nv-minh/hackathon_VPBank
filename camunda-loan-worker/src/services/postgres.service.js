@@ -13,21 +13,18 @@ pool.on('error', (err, client) => {
 
 /**
  * Lưu thông tin sản phẩm được gợi ý vào bảng recommendations.
- * @param {object} pool - Pool kết nối PostgreSQL.
  * @param {number} applicationId - ID của đơn vay.
- * @param {object} recommendedProduct - Đối tượng sản phẩm được gợi ý.
+ * @param {object} product_id - Đối tượng sản phẩm được gợi ý.
  * @returns {Promise<void>}
  */
-async function saveRecommendation(applicationId, recommendedProduct) {
-    const productId = recommendedProduct?.product_id || '1';
-
-
+async function saveRecommendation(applicationId, product_id) {
     const query = `
         INSERT INTO recommendations (application_id, product_id)
         VALUES ($1, $2, $3);
     `;
 
     try {
+        let productId = product_id;
         await pool.query(query, [applicationId, productId]);
         console.log(`✅ Đã lưu gợi ý (Sản phẩm ID: ${productId}) cho Đơn vay ID: ${applicationId}`);
     } catch (error) {

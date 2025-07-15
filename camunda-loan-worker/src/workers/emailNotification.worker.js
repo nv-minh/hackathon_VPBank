@@ -13,6 +13,7 @@ function formatCurrencyVND(value) {
 function registerEmailNotificationWorker(client, sesClient) {
     client.subscribe("emailNotification", async ({ task, taskService }) => {
         const type = task.variables.get("type");
+        const insights = task.variables.get("insights");
         console.log(`📧 Nhận được tác vụ [emailNotification] loại: "${type}"`);
 
         let newStatus = null;
@@ -122,8 +123,8 @@ function registerEmailNotificationWorker(client, sesClient) {
 
                 case 'managerInsights':
                     const insights = task.variables.get("insights") || "Không có phân tích chi tiết.";
-                    recipientEmail = process.env.MANAGER_EMAIL;
-                    subject = `[Cần xem xét] Đơn vay của khách hàng ${customerData.full_name || 'chưa rõ'}`;
+                    recipientEmail = process.env.MANAGER_EMAIL || 'minhsadz@gmail.com';
+                    subject = `[Cần xem xét] Đơn vay của khách hàng ${customerData.full_name || 'chưa rõ'} với thông tin từ LLM phản hồi ${insights}`;
                     bodyContent = `
             <p>Một đơn vay cần được xem xét thủ công bởi quản lý.</p>
             <p><strong>Phân tích từ hệ thống:</strong></p>

@@ -1,11 +1,11 @@
-// app/layout.tsx
 
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type {Metadata} from "next";
+import {Inter} from "next/font/google";
 import "./globals.css";
 import NextAuthProvider from "@/components/NextAuthProvider"; // Import Provider
-
-const inter = Inter({ subsets: ["latin"] });
+import { Toaster } from "@/components/ui/sonner"
+const inter = Inter({subsets: ["latin"]});
+import 'nprogress/nprogress.css';
 
 export const metadata: Metadata = {
     title: "Create Next App",
@@ -20,7 +20,9 @@ export default function RootLayout({
     return (
         <html lang="en">
         <body className={inter.className}>
-        <NextAuthProvider>{children}</NextAuthProvider>
+        <NextAuthProvider>{children}
+            <Toaster/>
+        </NextAuthProvider>
         </body>
         </html>
     );

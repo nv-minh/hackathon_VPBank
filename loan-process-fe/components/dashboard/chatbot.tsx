@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 // @ts-ignore
 import readVNNumber from '@oorts/read-vn-number';
+import {toast} from "sonner";
 
 interface Message {
   id: string
@@ -109,6 +110,7 @@ export function ChatBot({ onClose }: ChatBotProps) {
               : `Rất tiếc, đã có lỗi xảy ra: ${data.message || 'Vui lòng thử lại sau.'}`,
           timestamp: new Date(),
         }
+        toast.success("Thành công!", { description: "Hồ sơ vay vốn của bạn đã được tạo." });
 
         setMessages((prev) => [...prev, botResponse])
       } catch (error) {
