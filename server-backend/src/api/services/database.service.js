@@ -1,17 +1,49 @@
-const { Pool } = require('pg');
-const config = require('../../config');
+const { Pool } = require("pg");
+const config = require("../../config");
 
 const pool = new Pool(config.db);
 
 async function findOrCreateCustomer(keycloakId) {
-    const query = `
+  const query = `
         SELECT customer_id FROM customers WHERE keycloak_user_id = $1
     `;
-    const { rows } = await pool.query(query, [keycloakId]);
-    return rows[0].customer_id;
+  const { rows } = await pool.query(query, [keycloakId]);
+  return rows[0].customer_id;
 }
 
+/**
+ * Tạo một hồ sơ ứng tuyển (chỉ chứa các thông tin ban đầu).
+ * @param {number} customerId - ID của khách hàng.
+ * @param {object} profileData - Dữ liệu hồ sơ.
+ * @returns {Promise<number>} Trả về profile_id của hồ sơ vừa tạo.
+ */
+async function createApplicationProfile(customerId, profileData) {
+  const {
+    age,
+    income,
+    home_ownership,
+    employment_length_years,
+    default_on_file,
+    credit_history_length_years,
+  } = profileData;
 
+  const query = `
+        INSERT INTO application_profiles 
+            (customer_id, age, income, home_ownership, employment_length_years, default_on_file, credit_history_length_years)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING profile_id;
+    `;
+  const { rows } = await pool.query(query, [
+    customerId,
+    age,
+    income,
+    home_ownership,
+    employment_length_years,
+    default_on_file,
+    credit_history_length_years,
+  ]);
+  return rows[0].profile_id;
+}
 
 /**
  * Tìm thông tin khách hàng và hồ sơ mới nhất của họ.
@@ -22,12 +54,12 @@ async function findOrCreateCustomer(keycloakId) {
  * @returns {Promise<object|null>} Trả về object chứa thông tin khách hàng và hồ sơ, hoặc null nếu không tìm thấy.
  */
 async function findAndOptionalUpdateProfile(keycloakId, loanAmount) {
-    const client = await pool.connect();
+  const client = await pool.connect();
 
-    try {
-        await client.query('BEGIN');
+  try {
+    await client.query("BEGIN");
 
-        const selectQuery = `
+    const selectQuery = `
             SELECT
                 c.customer_id, c.full_name, c.email,
                 p.profile_id, p.age, p.income, p.home_ownership,
@@ -42,16 +74,16 @@ async function findAndOptionalUpdateProfile(keycloakId, loanAmount) {
             LIMIT 1;
         `;
 
-        const { rows } = await client.query(selectQuery, [keycloakId]);
-        const customerProfile = rows[0];
+    const { rows } = await client.query(selectQuery, [keycloakId]);
+    const customerProfile = rows[0];
 
-        if (!customerProfile) {
-            await client.query('COMMIT');
-            return null;
-        }
+    if (!customerProfile) {
+      await client.query("COMMIT");
+      return null;
+    }
 
-        if (loanAmount && customerProfile.profile_id) {
-            const updateQuery = `
+    if (loanAmount && customerProfile.profile_id) {
+      const updateQuery = `
                 UPDATE application_profiles
                 SET 
                     loan_amount = $1,
@@ -61,52 +93,79 @@ async function findAndOptionalUpdateProfile(keycloakId, loanAmount) {
                 RETURNING *;
             `;
 
+      const updatedResult = await client.query(updateQuery, [
+        loanAmount,
+        customerProfile.profile_id,
+      ]);
+      const updatedProfileData = updatedResult.rows[0];
 
-            const updatedResult = await client.query(updateQuery, [loanAmount, customerProfile.profile_id]);
-            const updatedProfileData = updatedResult.rows[0];
+      const finalResult = {
+        ...customerProfile,
+        ...updatedProfileData,
+      };
 
-            const finalResult = {
-                ...customerProfile,
-                ...updatedProfileData
-            };
-
-            await client.query('COMMIT');
-            return finalResult;
-        } else {
-            await client.query('COMMIT');
-            return customerProfile;
-        }
-
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error("Lỗi trong quá trình giao dịch:", error);
-        throw error;
-    } finally {
-        client.release();
+      await client.query("COMMIT");
+      return finalResult;
+    } else {
+      await client.query("COMMIT");
+      return customerProfile;
     }
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Lỗi trong quá trình giao dịch:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-
-
-async function createApplicationProfile(customerId, profileData) {
-    const {
-        age, income, home_ownership, employment_length_years,
-        default_on_file, credit_history_length_years
-    } = profileData;
-
-    const query = `
-        INSERT INTO application_profiles 
-            (customer_id, age, income, home_ownership, employment_length_years, default_on_file, credit_history_length_years)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING profile_id;
+async function createApplicationProfile(keycloakId, profileData) {
+  const {
+    age,
+    income,
+    home_ownership,
+    employment_length_years,
+    default_on_file,
+    credit_history_length_years,
+  } = profileData;
+  const query = `
+      INSERT INTO application_profiles (
+        customer_id, age, income, home_ownership, 
+        employment_length_years, default_on_file, credit_history_length_years
+      ) 
+      VALUES 
+        (
+          (SELECT customer_id FROM customers WHERE keycloak_user_id = $1), 
+          $2, $3, $4, $5, $6, $7
+        ) 
+      RETURNING profile_id;
     `;
-    const { rows } = await pool.query(query, [
-        customerId, age, income, home_ownership, employment_length_years,
-        default_on_file, credit_history_length_years
-    ]);
-    return rows[0].profile_id;
-}
 
+  const values = [
+    keycloakId,
+    age,
+    income,
+    home_ownership,
+    employment_length_years,
+    default_on_file,
+    credit_history_length_years,
+  ];
+
+  try {
+    const { rows } = await pool.query(query, values);
+
+    if (rows.length === 0) {
+      throw new Error(
+        `Không tìm thấy khách hàng với keycloakId: ${keycloakId}`
+      );
+    }
+
+    return rows[0].profile_id;
+  } catch (error) {
+    console.error("Lỗi khi tạo application profile:", error);
+    throw error;
+  }
+}
 
 /**
  * Kiểm tra xem khách hàng có đơn vay nào đang hoạt động không (PENDING hoặc IN_REVIEW).
@@ -114,14 +173,14 @@ async function createApplicationProfile(customerId, profileData) {
  * @returns {Promise<object|null>} Trả về thông tin đơn vay nếu có, ngược lại trả về null.
  */
 async function findActiveApplicationByCustomerId(customerId) {
-    const query = `
+  const query = `
         SELECT application_id, status, created_at FROM loan_applications
         WHERE customer_id = $1 AND status IN ('PENDING', 'IN_REVIEW')
         ORDER BY created_at DESC
         LIMIT 1;
     `;
-    const { rows } = await pool.query(query, [customerId]);
-    return rows[0] || null;
+  const { rows } = await pool.query(query, [customerId]);
+  return rows[0] || null;
 }
 
 /**
@@ -130,7 +189,7 @@ async function findActiveApplicationByCustomerId(customerId) {
  * @returns {Promise<number|null>} Trả về profile_id nếu tìm thấy, ngược lại trả về null.
  */
 async function findProfileIdByKeycloakId(keycloakId) {
-    const query = `
+  const query = `
         SELECT ap.profile_id
         FROM application_profiles AS ap
         JOIN customers AS c ON ap.customer_id = c.customer_id
@@ -139,15 +198,14 @@ async function findProfileIdByKeycloakId(keycloakId) {
         LIMIT 1;
     `;
 
-    try {
-        const { rows } = await pool.query(query, [keycloakId]);
-        console.log("rows",rows)
-        return rows.length > 0 ? rows?.[0]?.profile_id : null;
-
-    } catch (error) {
-        console.error('Error finding profile by Keycloak ID:', error);
-        throw error;
-    }
+  try {
+    const { rows } = await pool.query(query, [keycloakId]);
+    console.log("rows", rows);
+    return rows.length > 0 ? rows?.[0]?.profile_id : null;
+  } catch (error) {
+    console.error("Error finding profile by Keycloak ID:", error);
+    throw error;
+  }
 }
 
 /**
@@ -157,32 +215,34 @@ async function findProfileIdByKeycloakId(keycloakId) {
  * @returns {Promise<number>} ID của đơn vay vừa được tạo.
  */
 async function createLoanApplication(customerId, profileId) {
-    const query = `
+  const query = `
         INSERT INTO loan_applications (customer_id, profile_id, status)
         VALUES ($1, $2, 'PENDING')
         RETURNING application_id;
     `;
 
-    const { rows } = await pool.query(query, [customerId, profileId]);
-    return rows[0].application_id;
+  const { rows } = await pool.query(query, [customerId, profileId]);
+  return rows[0].application_id;
 }
 
-
-async function updateApplicationWithProcessId(applicationId, processInstanceId) {
-    const query = `
+async function updateApplicationWithProcessId(
+  applicationId,
+  processInstanceId
+) {
+  const query = `
         UPDATE loan_applications SET camunda_process_instance_id = $1, updated_at = NOW()
         WHERE application_id = $2;
     `;
-    await pool.query(query, [processInstanceId, applicationId]);
+  await pool.query(query, [processInstanceId, applicationId]);
 }
 
 module.exports = {
-    pool,
-    findOrCreateCustomer,
-    createApplicationProfile,
-    findProfileIdByKeycloakId,
-    createLoanApplication,
-    updateApplicationWithProcessId,
-    findAndOptionalUpdateProfile,
-    findActiveApplicationByCustomerId
+  pool,
+  findOrCreateCustomer,
+  createApplicationProfile,
+  findProfileIdByKeycloakId,
+  createLoanApplication,
+  updateApplicationWithProcessId,
+  findAndOptionalUpdateProfile,
+  findActiveApplicationByCustomerId,
 };
