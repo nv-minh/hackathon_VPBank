@@ -1,0 +1,60 @@
+<form role="form">
+  <h3>Thông tin Hồ sơ Vay</h3>
+  <table class="table">
+    <tbody>
+      <tr>
+        <td><strong>Tên khách hàng:</strong></td>
+        <td>{{customerData.full_name}}</td>
+      </tr>
+      <tr>
+        <td><strong>Email:</strong></td>
+        <td>{{customerData.email}}</td>
+      </tr>
+      <tr>
+        <td><strong>Số tiền vay:</strong></td>
+        <td>{{customerData.loan_amount}}</td>
+      </tr>
+      <tr>
+        <td><strong>Thu nhập hàng năm:</strong></td>
+        <td>{{customerData.income}}</td>
+      </tr>
+      <tr>
+        <td><strong>Điểm tín dụng:</strong></td>
+        <td>{{customerData.credit_score}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr />
+
+  <h3>Phân tích từ Trợ lý AI</h3>
+  <div class="well">
+    <p cam-variable-name="insights" cam-variable-type="String"></p>
+  </div>
+
+  <hr />
+
+  <h3>Quyết định</h3>
+  <div class="form-group">
+    <label for="approve_loan">Bạn có phê duyệt khoản vay này không?</label>
+    <input
+      type="checkbox"
+      cam-variable-name="approve_loan"
+      cam-variable-type="Boolean"
+      id="approve_loan"
+      class="form-control"
+    />
+  </div>
+
+  <script cam-script type="text/form-script">
+    camForm.on('form-loaded', function() {
+      camForm.variableManager.fetchVariable('customerData');
+      camForm.variableManager.fetchVariable('insights');
+    });
+
+    camForm.on('variables-fetched', function() {
+      $scope.customerData = camForm.variableManager.variable('customerData').value;
+      $scope.insights = camForm.variableManager.variable('insights').value;
+    });
+  </script>
+</form>
