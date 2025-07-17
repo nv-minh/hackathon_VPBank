@@ -14,6 +14,7 @@ interface DashboardContentProps {
 }
 
 export function DashboardContent({ session }: DashboardContentProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
@@ -54,15 +55,15 @@ export function DashboardContent({ session }: DashboardContentProps) {
 
   return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <header className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 py-4">
+        <header className="bg-white border-b shadow-sm">
+          <div className="container px-4 py-4 mx-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <h1 className="text-2xl font-bold text-gray-900">Hệ Thống Vay Vốn</h1>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  <User className="h-5 w-5 text-gray-600" />
+                  <User className="w-5 h-5 text-gray-600" />
                   <span className="text-gray-700">{session?.user?.name || session?.user?.email}</span>
                 </div>
                 <Button
@@ -70,7 +71,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
                     onClick={() => signOut({ callbackUrl: "/" })}
                     className="flex items-center space-x-2"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="w-4 h-4" />
                   <span>Đăng xuất</span>
                 </Button>
               </div>
@@ -78,23 +79,23 @@ export function DashboardContent({ session }: DashboardContentProps) {
           </div>
         </header>
 
-        <main className="container mx-auto px-4 py-8">
+        <main className="container px-4 py-8 mx-auto">
           <div className={`grid grid-cols-1 ${hasProfile ? "lg:grid-cols-3" : ""} gap-8`}>
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 lg:col-span-2">
               <Card>
                 <CardHeader>
                   <CardTitle>Chào mừng bạn đến với hệ thống!</CardTitle>
                   <CardDescription>Quản lý các khoản vay và theo dõi trạng thái đăng ký của bạn</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <h3 className="font-semibold text-blue-900 mb-2">Khoản Vay Hiện Tại</h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="p-4 rounded-lg bg-blue-50">
+                      <h3 className="mb-2 font-semibold text-blue-900">Khoản Vay Hiện Tại</h3>
                       <p className="text-2xl font-bold text-blue-600">0</p>
                       <p className="text-sm text-blue-700">Chưa có khoản vay nào</p>
                     </div>
-                    <div className="p-4 bg-green-50 rounded-lg">
-                      <h3 className="font-semibold text-green-900 mb-2">Đơn Đăng Ký</h3>
+                    <div className="p-4 rounded-lg bg-green-50">
+                      <h3 className="mb-2 font-semibold text-green-900">Đơn Đăng Ký</h3>
                       <p className="text-2xl font-bold text-green-600">0</p>
                       <p className="text-sm text-green-700">Chưa có đơn nào</p>
                     </div>
@@ -108,7 +109,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
                   <CardDescription>Theo dõi các giao dịch và thanh toán của bạn</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="py-8 text-center text-gray-500">
                     <p>Chưa có giao dịch nào</p>
                   </div>
                 </CardContent>
@@ -130,7 +131,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center">
-                            <MessageCircle className="mr-2 h-5 w-5" />
+                            <MessageCircle className="w-5 h-5 mr-2" />
                             Trợ Lý Ảo
                           </CardTitle>
                           <CardDescription>Tôi có thể giúp bạn đăng ký khoản vay</CardDescription>

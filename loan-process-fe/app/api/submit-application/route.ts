@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(response.data, { status: response.status });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error("Proxy API error:", error.response?.data || error.message);
         return NextResponse.json(

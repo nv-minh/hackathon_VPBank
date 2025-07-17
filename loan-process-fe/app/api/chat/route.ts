@@ -9,7 +9,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Input is required" }, { status: 400 });
     }
 
-    const apiResponse = await fetch(process.env.NEXT_PUBLIC_CHATBOT_API_URL, {
+    const apiUrl = process.env.NEXT_PUBLIC_CHATBOT_API_URL;
+    if (!apiUrl) {
+      return NextResponse.json(
+        { error: "Chatbot API URL is not configured" },
+        { status: 500 }
+      );
+    }
+
+    const apiResponse = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

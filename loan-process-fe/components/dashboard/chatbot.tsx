@@ -6,8 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Bot, User, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// @ts-ignore
-import readVNNumber from "@oorts/read-vn-number";
+import { ReadingConfig, doReadNumber } from "read-vietnamese-number";
 import { toast } from "sonner";
 
 interface Message {
@@ -36,13 +35,16 @@ export function ChatBot({ onClose }: ChatBotProps) {
   const [showLoanInput, setShowLoanInput] = useState(true);
   const [inputError, setInputError] = useState<string | null>(null);
   const [loanAmountInWords, setLoanAmountInWords] = useState<string>("");
+  const config = new ReadingConfig();
+  config.unit = ["đồng"];
 
   useEffect(() => {
     const numericValue = parseFloat(loanAmount.replace(/\./g, ""));
     if (!isNaN(numericValue) && numericValue > 0) {
       try {
-        const words = readVNNumber.toVNWord(numericValue);
+        const words = doReadNumber(config, numericValue.toString());
         setLoanAmountInWords(words);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         setLoanAmountInWords("");
       }
@@ -118,6 +120,7 @@ export function ChatBot({ onClose }: ChatBotProps) {
         });
 
         setMessages((prev) => [...prev, botResponse]);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
