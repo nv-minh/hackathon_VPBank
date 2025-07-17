@@ -1,4 +1,4 @@
-import { type NextAuthOptions, type DefaultSession } from "next-auth";
+import { type DefaultSession, type NextAuthOptions } from "next-auth";
 import KeycloakProvider from "next-auth/providers/keycloak";
 
 declare module "next-auth" {
@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
           image: profile.picture,
         };
       },
-    })
+    }),
   ],
   callbacks: {
     async jwt({ token, account }) {

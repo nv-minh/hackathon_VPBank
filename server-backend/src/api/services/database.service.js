@@ -3,12 +3,37 @@ const config = require("../../config");
 
 const pool = new Pool(config.db);
 
-async function findOrCreateCustomer(keycloakId) {
-  const query = `
-        SELECT customer_id FROM customers WHERE keycloak_user_id = $1
-    `;
-  const { rows } = await pool.query(query, [keycloakId]);
-  return rows[0].customer_id;
+/**
+ * Tìm một khách hàng bằng keycloak_user_id. Nếu không tìm thấy, tạo một khách hàng mới.
+ * @param {string} keycloakId - ID người dùng từ Keycloak.
+ * @param {string} fullName - Tên đầy đủ từ token Keycloak.
+ * @param {string} email - Email từ token Keycloak.
+ * @returns {Promise<number>} Trả về customer_id của khách hàng hiện có hoặc khách hàng mới.
+ */
+async function findOrCreateCustomer(keycloakId, fullName, email) {
+  const selectQuery =
+    "SELECT customer_id FROM customers WHERE keycloak_user_id = $1";
+  const { rows } = await pool.query(selectQuery, [keycloakId]);
+
+  if (rows.length > 0) {
+    console.log(
+      `Khách hàng với keycloakId ${keycloakId} đã tồn tại. ID: ${rows[0].customer_id}`
+    );
+    return rows[0].customer_id;
+  } else {
+    console.log(`Tạo khách hàng mới cho keycloakId ${keycloakId}.`);
+    const insertQuery = `
+        INSERT INTO customers (keycloak_user_id, full_name, email)
+        VALUES ($1, $2, $3)
+        RETURNING customer_id;
+      `;
+    const insertResult = await pool.query(insertQuery, [
+      keycloakId,
+      fullName,
+      email,
+    ]);
+    return insertResult.rows[0].customer_id;
+  }
 }
 
 /**
@@ -17,33 +42,33 @@ async function findOrCreateCustomer(keycloakId) {
  * @param {object} profileData - Dữ liệu hồ sơ.
  * @returns {Promise<number>} Trả về profile_id của hồ sơ vừa tạo.
  */
-async function createApplicationProfile(customerId, profileData) {
-  const {
-    age,
-    income,
-    home_ownership,
-    employment_length_years,
-    default_on_file,
-    credit_history_length_years,
-  } = profileData;
+// async function createApplicationProfile(customerId, profileData) {
+//   const {
+//     age,
+//     income,
+//     home_ownership,
+//     employment_length_years,
+//     default_on_file,
+//     credit_history_length_years,
+//   } = profileData;
 
-  const query = `
-        INSERT INTO application_profiles 
-            (customer_id, age, income, home_ownership, employment_length_years, default_on_file, credit_history_length_years)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING profile_id;
-    `;
-  const { rows } = await pool.query(query, [
-    customerId,
-    age,
-    income,
-    home_ownership,
-    employment_length_years,
-    default_on_file,
-    credit_history_length_years,
-  ]);
-  return rows[0].profile_id;
-}
+//   const query = `
+//         INSERT INTO application_profiles
+//             (customer_id, age, income, home_ownership, employment_length_years, default_on_file, credit_history_length_years)
+//         VALUES ($1, $2, $3, $4, $5, $6, $7)
+//         RETURNING profile_id;
+//     `;
+//   const { rows } = await pool.query(query, [
+//     customerId,
+//     age,
+//     income,
+//     home_ownership,
+//     employment_length_years,
+//     default_on_file,
+//     credit_history_length_years,
+//   ]);
+//   return rows[0].profile_id;
+// }
 
 /**
  * Tìm thông tin khách hàng và hồ sơ mới nhất của họ.
